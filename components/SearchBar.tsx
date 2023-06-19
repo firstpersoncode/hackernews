@@ -32,7 +32,7 @@ export default function SearchBar() {
     if (timeout.current) clearTimeout(timeout.current);
     timeout.current = setTimeout(() => {
       push({
-        query: { ...query, s: e.target.value },
+        query: { ...query, s: encodeURIComponent(e.target.value) },
       });
     }, 3000);
   }
