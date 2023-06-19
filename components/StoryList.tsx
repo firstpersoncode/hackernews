@@ -26,7 +26,9 @@ export default function StoryList() {
     return items
       .filter((item) => {
         if (!isNaN(+searchParams)) return item.id === Number(searchParams);
-        return item.title.toLowerCase().includes(searchParams.toLowerCase());
+        return item.title
+          .toLowerCase()
+          .includes(decodeURIComponent(searchParams).toLowerCase());
       })
       .sort((a, b) => b.time - a.time);
   }, [items, query.s]);
