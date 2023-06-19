@@ -4,6 +4,7 @@ import Container from "@mui/material/Container";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
 import Snackbar from "@mui/material/Snackbar";
+import Alert from "@mui/material/Alert";
 import StoryItem, { IItem } from "./StoryItem";
 
 export default function StoryList() {
@@ -12,6 +13,7 @@ export default function StoryList() {
   const { query } = useRouter();
   const [ready, setReady] = useState<boolean>(false);
   const [page, setPage] = useState<number>(0);
+  const [error, setError] = useState<string>("");
   const [ids, setIds] = useState<number[]>([]);
   const [items, setItems] = useState<IItem[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -38,14 +40,19 @@ export default function StoryList() {
     if (!ready) return;
     // prepare top stories
     (async () => {
-      let ids = await getTopStories();
-      setIds(ids);
-      // due to the API limitation that unable to provide text-based search
-      // we need to populate fetched top stories so that we can perform text-based search on line 16 - 19.
-      // the populating process for all top stories won't affect the user's experience, since we use pagination on rendering the items on line 53.
-      for (let id of ids) {
-        // perform async loop so that each id doesn't have to wait for other ids to be done populated.
-        populateStory(id);
+      try {
+        let ids = await getTopStories();
+        setIds(ids);
+        // due to the API limitation that unable to provide text-based search
+        // we need to populate fetched top stories so that we can perform text-based search on line 16 - 19.
+        // the populating process for all top stories won't affect the user's experience, since we use pagination on rendering the items on line 53.
+        for (let id of ids) {
+          // perform async loop so that each id doesn't have to wait for other ids to be done populated.
+          populateStory(id);
+        }
+      } catch (err) {
+        console.error(err);
+        setError((err as any).toString());
       }
     })();
     window.addEventListener("scroll", handleScroll);
@@ -82,7 +89,7 @@ export default function StoryList() {
       setItems((v) => [...v, story as IItem]);
     } catch (err) {
       console.log(err);
-      return null;
+      setError((err as any).toString());
     }
   }
 
@@ -121,23 +128,36 @@ export default function StoryList() {
       <Snackbar
         open={items.length !== ids.length}
         message={`${items.length} / ${ids.length} stories populated`}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
       />
+
+      <Snackbar
+        open={Boolean(error)}
+        autoHideDuration={3000}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        onClose={() => {
+          setError("");
+        }}
+      >
+        <Alert
+          onClose={() => {
+            setError("");
+          }}
+          severity="error"
+          sx={{ width: "100%" }}
+        >
+          {error}
+        </Alert>
+      </Snackbar>
     </>
   );
 }
 
 async function getTopStories(): Promise<number[]> {
   // this service will fetch all top stories ids
-  try {
-    let res = await fetch(
-      "https://hacker-news.firebaseio.com/v0/topstories.json"
-    );
-    if (!res.ok) throw res;
-    let ids = (await res.json()) as number[];
-    return ids;
-  } catch (err) {
-    console.log(err);
-    return [];
-  }
+  let res = await fetch(
+    "https://hacker-news.firebaseio.com/v0/topstories.json"
+  );
+  if (!res.ok) throw res;
+  let ids = (await res.json()) as number[];
+  return ids;
 }
